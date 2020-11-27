@@ -1,0 +1,259 @@
+---
+title: "Superficie de tierra cultivada por cantón en la GAM"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+---
+
+```{r setup, include=FALSE}
+#-------------------- Paquetes --------------------
+
+library(flexdashboard)
+library(dplyr)
+library(sf)
+library(leaflet)
+library(leafem)
+library(esri2sf)
+library(raster)
+library(plotly)
+
+```
+
+Row {data-height=550}
+-----------------------------------------------------------------------
+
+### Mapa {data-width=600}
+```{r include=FALSE}
+
+#--------- URL de geoservicios y datos ------------
+
+url_agfs_limite_gam <-
+  "https://services9.arcgis.com/RrvMEynxDB8hycVO/arcgis/rest/services/gam_limite_gam/FeatureServer/0"
+url_raster_uso_tierra <-
+  "https://raw.githubusercontent.com/atlas-servicios-ecosistemicos-gam/datos/master/uso-tierra/gam/USO_COBERTURA_GAM_WEB.tif"
+
+#--------------- Objetos sf y raster --------------
+
+# Límite de la GAM
+sf_limite_gam <- 
+  esri2sf(url_agfs_limite_gam)
+
+# Límite de la GAM (reproyectada a Web Mercator)
+sf_limite_gam_web <- 
+  sf_limite_gam %>%
+  st_transform(3857)
+
+# Capa raster de uso de la tierra (en Web Mercator)
+raster_uso_tierra <-
+  raster(url_raster_uso_tierra) %>%
+  crop(sf_limite_gam_web) %>%
+  mask(sf_limite_gam_web)
+
+#---------------- Paletas de colores ---------------
+
+colores_uso_tierra <- 
+  c(rgb(2,217,214,  maxColorValue=255), rgb(0,204,242,  maxColorValue=255), 
+    rgb(145,172,128,maxColorValue=255), rgb(106,142,88, maxColorValue=255),
+    rgb(125,106,69, maxColorValue=255), rgb(88,54,51,   maxColorValue=255),
+    rgb(249,216,87, maxColorValue=255), rgb(255,252,138,maxColorValue=255)
+  )
+
+etiquetas_uso_tierra <- 
+  c("Zonas urbanas continuas y discontinuas", "Aguas continentales", 
+    "Bosque secundario temprano", "Bosque secundario medio y tardío",
+    "Café", "Fresas, flores y ornamentales", 
+    "Hortalizas, raíces y tubérculos", "Pastos con árboles y limpios"
+  )
+
+values_uso_tierra <- c(1, 2, 3, 4, 5, 6, 7, 8)
+
+pal <- colorFactor(
+  palette = colores_uso_tierra, 
+  domain = values_uso_tierra,
+  na.color = "transparent"
+)
+
+```
+
+```{r}
+
+#------------------- Mapa ------------------
+
+leaflet() %>%
+  setView(-84.15, (9.907672 + 9.94576)/2, 10) %>%
+  addProviderTiles(providers$OpenStreetMap.Mapnik, group = "OpenStreetMap") %>%
+  addProviderTiles(providers$Stamen.TonerLite, group = "Stamen Toner Lite") %>%
+  addProviderTiles(providers$CartoDB.DarkMatter, group = "CartoDB Dark Matter") %>%
+  addProviderTiles(providers$Esri.WorldImagery, group = "Imágenes de ESRI") %>%
+  addPolygons(
+    data = sf_limite_gam,
+    color = "Purple",
+    fillColor = "transparent",
+    stroke = TRUE,
+    weight = 6.0,
+    group = "Límite de la GAM"
+  ) %>%
+  addRasterImage(
+    raster_uso_tierra,
+    colors = pal,
+    opacity = 1,
+    group = "Uso de la tierra"
+  ) %>%
+  addLegend(
+    title = "Uso de la tierra",
+    position = "bottomleft",
+    colors = colores_uso_tierra,
+    labels = etiquetas_uso_tierra,
+    group = "Uso de la tierra"
+  ) %>%
+  addLayersControl(
+    baseGroups = c("OpenStreetMap", "Stamen Toner Lite", "CartoDB Dark Matter", "Imágenes de ESRI"),
+    overlayGroups = c("Límite de la GAM", "Uso de la tierra"),
+    options = layersControlOptions(collapsed = TRUE)    
+  ) %>%  
+  addScaleBar(
+    position = "bottomright",
+    options = scaleBarOptions(imperial = FALSE)
+  ) %>%
+  addMouseCoordinates()
+```
+
+### San José {data-width=200}
+```{r}
+
+# Vector de nombres de cantones
+cantones <- 
+  c("Aserrí", "Desamparados", "Santa Ana", "Alajuelita", 
+    "Escazú", "Moravia", "Goicochea", "Curridabat",
+    "Mora", "Coronado", "Montes de Oca", "San José", 
+    "Tibás")
+
+# Vector de coberturas
+coberturas <- 
+  c(14.0, 8.0,  7.9,  5.6, 
+    3.9,  3.5,  3.2,  3.2, 
+    2.6,  0.9,  0.5,  0.2,
+    0.1)
+
+cantones_cobertura <- 
+  data.frame(
+    canton = cantones, 
+    cobertura = coberturas
+  )
+
+cantones_cobertura %>%
+DT::datatable(
+  colnames = c("Cantón", "Cobertura"),
+  rownames = FALSE,
+  options = list(pageLength = 15, dom = 't')
+)
+
+```
+
+### Heredia {data-width=200}
+```{r}
+
+# Vector de nombres cantones
+cantones <- 
+  c("Santo Domingo", "San Rafael", "San Isidro", "Santa Bárbara",
+    "Barva", "San Pablo", "Heredia", "Flores",
+    "Belén")
+
+# Vector de coberturas
+coberturas <- 
+  c(21.6, 19.3, 19.0, 18.0, 
+    16.5, 16.2, 7.6,  5.3, 
+    2.3)
+
+cantones_cobertura <- 
+  data.frame(
+    canton = cantones, 
+    cobertura = coberturas
+  )
+
+cantones_cobertura %>%
+DT::datatable(
+  colnames = c("Cantón", "Cobertura"),
+  rownames = FALSE,
+  options = list(dom = 't')
+)
+
+```
+
+Row {data-height=450}
+-----------------------------------------------------------------------
+
+### Cobertura mínima {.value-box} {data-width=200}
+```{r}
+valueBox(value = "0.1%", 
+  caption = "<h3>Cobertura mínima</h3><br><h4>San José</h4>"
+)
+```
+
+### Cobertura máxima {.value-box} {data-width=200}
+```{r}
+valueBox(value = "42.2%", 
+  caption = "<h3>Cobertura máxima</h3><br><h4>Poás</h4>"
+)
+```
+
+### Cobertura promedio {.value-box} {data-width=200}
+```{r}
+valueBox(value = "10.2%", 
+  caption = "<h3>Cobertura promedio</h3>"
+)
+```
+
+### Cartago {data-width=200}
+```{r}
+
+# Vector de nombres de cantones
+cantones <- 
+  c("Oreamuno", "Paraíso", "Alvarado", "Cartago",
+    "La Unión", "El Guarco")
+
+# Vector de coberturas
+coberturas <- 
+  c(27.4, 17.3, 12.2, 8.4, 
+    6.0,  4.8)
+
+cantones_cobertura <- 
+  data.frame(
+    canton = cantones, 
+    cobertura = coberturas
+  )
+
+cantones_cobertura %>%
+DT::datatable(
+  colnames = c("Cantón", "Cobertura"),
+  rownames = FALSE,
+  options = list(dom = 't')
+)
+
+```
+
+### Alajuela {data-width=200}
+```{r}
+
+# Vector de nombres cantones
+cantones <- 
+  c("Poás", "Alajuela", "Atenas")
+
+# Vector de coberturas
+coberturas <- 
+  c(42.2, 18.2, 3.0)
+
+cantones_cobertura <- 
+  data.frame(
+    canton = cantones, 
+    cobertura = coberturas
+  )
+
+cantones_cobertura %>%
+DT::datatable(
+  colnames = c("Cantón", "Cobertura"),
+  rownames = FALSE,
+  options = list(dom = 't')
+)
+
+```

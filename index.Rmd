@@ -19,7 +19,7 @@ library(plotly)
 
 ```
 
-Row {data-height=550}
+Row {data-height=650}
 -----------------------------------------------------------------------
 
 ### Mapa {data-width=600}
@@ -180,7 +180,7 @@ DT::datatable(
 
 ```
 
-Row {data-height=450}
+Row {data-height=350}
 -----------------------------------------------------------------------
 
 ### Cobertura mínima {.value-box} {data-width=200}
